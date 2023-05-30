@@ -1,6 +1,7 @@
 import { PluginEvent, ProcessedPluginEvent } from '@posthog/plugin-scaffold'
 import * as Sentry from '@sentry/node'
 import { Counter } from 'prom-client'
+import { retryOnDependencyUnavailableError } from 'kafka/error-handling'
 
 import { runInSpan } from '../../../sentry'
 import { Hub, PipelineEvent, PostIngestionEvent } from '../../../types'
@@ -178,7 +179,7 @@ export class EventPipelineRunner {
                     event: JSON.stringify(this.originalEvent),
                 })
                 try {
-                    const result = await step(...args)
+                    const result = await retryOnDependencyUnavailableError(() => step(...args))
                     this.hub.statsd?.increment('kafka_queue.event_pipeline.step', { step: step.name })
                     this.hub.statsd?.timing('kafka_queue.event_pipeline.step.timing', timer, { step: step.name })
                     return result
@@ -199,16 +200,6 @@ export class EventPipelineRunner {
         })
 
         this.hub.statsd?.increment('kafka_queue.event_pipeline.step.error', { step: currentStepName })
-
-        if (err instanceof DependencyUnavailableError) {
-            // If this is an error with a dependency that we control, we want to
-            // ensure that the caller knows that the event was not processed,
-            // for a reason that we control and that is transient.
-            this.hub.statsd?.increment('kafka_queue.event_pipeline.step.error_dep_unavailable', {
-                step: currentStepName,
-            })
-            throw err
-        }
 
         if (sentToDql) {
             try {
