@@ -1,7 +1,7 @@
 import { PluginEvent, ProcessedPluginEvent } from '@posthog/plugin-scaffold'
 import * as Sentry from '@sentry/node'
-import { Counter } from 'prom-client'
 import { retryOnDependencyUnavailableError } from 'kafka/error-handling'
+import { Counter } from 'prom-client'
 
 import { runInSpan } from '../../../sentry'
 import { Hub, PipelineEvent, PostIngestionEvent } from '../../../types'
