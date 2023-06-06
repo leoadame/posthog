@@ -50,7 +50,6 @@ export class PersonState {
     private db: DB
     private statsd: StatsD | undefined
     private personManager: PersonManager
-    public updateIsIdentified: boolean // TODO: remove this from the class and being hidden
     private poEEmbraceJoin: boolean
 
     constructor(
@@ -77,10 +76,6 @@ export class PersonState {
         this.statsd = statsd
         this.personManager = personManager
 
-        // If set to true, we'll update `is_identified` at the end of `updateProperties`
-        // :KLUDGE: This is an indirect communication channel between `handleIdentifyOrAlias` and `updateProperties`
-        this.updateIsIdentified = false
-
         // For persons on events embrace the join gradual roll-out, remove after fully rolled out
         this.poEEmbraceJoin = poEEmbraceJoin
     }
@@ -100,15 +95,11 @@ export class PersonState {
             }
         }
         // At this point this.person is guaranteed to be defined
-        if (
-            this.eventProperties['$set'] ||
-            this.eventProperties['$set_once'] ||
-            this.eventProperties['$unset'] ||
-            this.updateIsIdentified
-        ) {
-            person = await this.updatePersonProperties(person)
-        }
-        return person
+        return await this.updatePersonProperties(person)
+    }
+
+    private shouldIdentifyPerson(): boolean {
+        return ['$identify', '$create_alias', '$merge_dangerously'].includes(this.event.event)
     }
 
     private async createOrGetPerson(): Promise<[Person, boolean]> {
@@ -125,8 +116,7 @@ export class PersonState {
                     propertiesOnce || {},
                     this.teamId,
                     null,
-                    // :NOTE: This should never be set in this branch, but adding this for logical consistency
-                    this.updateIsIdentified,
+                    this.shouldIdentifyPerson(),
                     this.newUuid,
                     this.event.uuid,
                     [this.distinctId]
@@ -232,7 +222,7 @@ export class PersonState {
         if (!equal(person.properties, updatedProperties)) {
             update.properties = updatedProperties
         }
-        if (this.updateIsIdentified && !person.is_identified) {
+        if (this.shouldIdentifyPerson() && !person.is_identified) {
             update.is_identified = true
         }
 
@@ -347,8 +337,6 @@ export class PersonState {
         timestamp: DateTime,
         totalMergeAttempts = 0
     ): Promise<Person> {
-        this.updateIsIdentified = true
-
         const otherPerson = await this.db.fetchPerson(teamId, otherPersonDistinctId)
         const mergeIntoPerson = await this.db.fetchPerson(teamId, mergeIntoDistinctId)
 
