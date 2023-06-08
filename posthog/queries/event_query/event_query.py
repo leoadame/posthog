@@ -93,6 +93,7 @@ class EventQuery(metaclass=ABCMeta):
         self._should_round_interval = round_interval
 
         self._person_id_alias = self._get_person_id_alias(person_on_events_mode)
+        self._query_date_range = QueryDateRange(filter=filter, team=team, should_round=round_interval)
 
     @abstractmethod
     def get_query(self) -> Tuple[str, Dict[str, Any]]:
@@ -215,9 +216,8 @@ class EventQuery(metaclass=ABCMeta):
 
     def _get_date_filter(self) -> Tuple[str, Dict]:
         date_params = {}
-        query_date_range = QueryDateRange(filter=self._filter, team=self._team, should_round=False)
-        parsed_date_from, date_from_params = query_date_range.date_from
-        parsed_date_to, date_to_params = query_date_range.date_to
+        parsed_date_from, date_from_params = self._query_date_range.date_from
+        parsed_date_to, date_to_params = self._query_date_range.date_to
         date_params.update(date_from_params)
         date_params.update(date_to_params)
 
@@ -255,6 +255,10 @@ class EventQuery(metaclass=ABCMeta):
             person_properties_mode=person_properties_mode,
             person_id_joined_alias=person_id_joined_alias,
             hogql_context=self._filter.hogql_context,
+            hogql_variables={
+                "date_from": self._query_date_range.date_from_param,
+                "date_to": self._query_date_range.date_to_param,
+            },
         )
 
     def _get_not_null_actor_condition(self) -> str:

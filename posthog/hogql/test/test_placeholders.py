@@ -1,7 +1,7 @@
 from posthog.hogql import ast
 from posthog.hogql.errors import HogQLException
 from posthog.hogql.parser import parse_expr
-from posthog.hogql.placeholders import assert_no_placeholders, replace_placeholders
+from posthog.hogql.placeholders import replace_placeholders
 from posthog.test.base import BaseTest
 
 
@@ -54,5 +54,5 @@ class TestParser(BaseTest):
     def test_assert_no_placeholders(self):
         expr = ast.Placeholder(field="foo")
         with self.assertRaises(HogQLException) as context:
-            assert_no_placeholders(expr)
-        self.assertTrue("Placeholder 'foo' not allowed in this context" in str(context.exception))
+            replace_placeholders(expr, None)
+        self.assertTrue("Placeholders, such as 'foo', are not allowed in this context" in str(context.exception))

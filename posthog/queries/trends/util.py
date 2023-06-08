@@ -86,7 +86,14 @@ def process_math(
     elif entity.math in COUNT_PER_ACTOR_MATH_FUNCTIONS:
         aggregate_operation = f"{COUNT_PER_ACTOR_MATH_FUNCTIONS[entity.math]}(intermediate_count)"
     elif entity.math == "hogql":
-        aggregate_operation = translate_hogql(entity.math_hogql, filter.hogql_context)
+        aggregate_operation = translate_hogql(
+            entity.math_hogql,
+            filter.hogql_context,
+            variables={
+                "date_from": filter.date_from,
+                "date_to": filter.date_to,
+            },
+        )
 
     return aggregate_operation, join_condition, params
 

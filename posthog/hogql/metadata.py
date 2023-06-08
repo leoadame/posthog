@@ -20,7 +20,7 @@ def get_hogql_metadata(
     try:
         if isinstance(query.expr, str):
             context = HogQLContext(team_id=team.pk)
-            translate_hogql(query.expr, context=context)
+            translate_hogql(query.expr, context=context, variables={"date_from": "X"})
         elif isinstance(query.select, str):
             context = HogQLContext(team_id=team.pk, enable_select_queries=True)
             print_ast(parse_select(query.select), context=context, dialect="clickhouse")
